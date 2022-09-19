@@ -1,44 +1,93 @@
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Objects;
-import java.util.Scanner;
+import java.util.*;
 
 public class Polynomial {
 
     // 3x + 7x^2 + 8x^3
-    private ArrayList<Term> mPolynomial;
+    private LinkedList<Term> mPolynomial;
 
     public Polynomial() {
-        mPolynomial = new ArrayList<>();
+        mPolynomial = new LinkedList<>();
+    }
+
+    public Polynomial(Polynomial p) {
+        mPolynomial = new LinkedList<>();
+        for(int i=0; i<p.getNumTerms(); i++) {
+            addTerm(p.getTerm(i));
+        }
     }
 
     public Polynomial(String p) {
-        mPolynomial = new ArrayList<>();
+        mPolynomial = new LinkedList<>();
         String[] temp = p.split(" "); // splits string at every empty space and puts new strings in array
-        for(int i=0; i<temp.length; i++) { // cycles through temp array, adding new terms to mPolynomial arrayList
-            if (!temp[i].equals("+") && !temp[i].equals("-")) { // form of a term: ax^b
-                boolean negativeCoefficient = (i > 0) && temp[i-1].equals("-"); // checks to see if current Term has a negative coefficient (temp[i-1] refers to the + or - in front of the term)
-                boolean negativeExponent = temp[i].charAt(temp[i].length()-2) == '-';
-                int a, b;
-                if(temp[i].indexOf('x') == -1) { // if term is in form of: a
-                    a = Integer.parseInt(temp[i]);
+        for(int i=0; i<temp.length; i++) { // cycles through temp array, adding new terms to mPolynomial LinkedList
+            if(!temp[i].equals("+") && !temp[i].equals("-")) { // skips any '+' or '-' signs in the array temp
+                // STEP 1: ASSIGN A & B
+                int indexOfX = temp[i].indexOf('x');
+                int indexOfExponent = temp[i].indexOf('^');
+                int indexOfNegativeSign = temp[i].indexOf('-');
+                int a, b; // form of terms: ax^b, where a is the coefficient & b is the exponent
+
+                if(indexOfX == -1) { // case: a, a^b (no 'x')
+                    if(indexOfExponent == -1) // if term is in the form of a
+                        a = Integer.parseInt(temp[i]);
+                    else // if term is in the form a^b, b is equal to the value after '^'
+                        a = (int) Math.pow(Integer.parseInt(temp[i].substring(0, indexOfExponent)), Integer.parseInt(temp[i].substring(indexOfExponent + 1)));
                     b = 0;
-                } else {// if term is in form of ax^b || ax || x
-                    a = (temp[i].charAt(0) != 'x') ? Integer.parseInt(temp[i].substring(0,1)) : 1;
-                    b = (temp[i].charAt(temp[i].length() - 1) != 'x') ? Integer.parseInt(temp[i].substring(temp[i].length() - 1)) : 1;
+                } else if(indexOfExponent == -1) { // cases: x, -x, ax (no '^')
+                    if(indexOfNegativeSign == 0 && indexOfX == 1) // if term is in form of -x (different than -1x), a = -1
+                        a = -1;
+                    else // if term is in form of x, a is equal to 1, else a is equal to the value before x
+                        a = (indexOfX == 0) ? 1: Integer.parseInt(temp[i].substring(0, indexOfX));
+                    b = 1;
+                } else {// cases: x^b, -x^b, ax^b (both 'x' & '^' are present)
+                    if(indexOfNegativeSign == 1 && indexOfX == 2) // if term is in form of -x^b (different than -1x^b), a = -1
+                        a = -1;
+                    else // if term is in form of x^b, a is equal to 1, else a is equal to the value before x
+                        a = (indexOfX == 0) ? 1: Integer.parseInt(temp[i].substring(0, indexOfX));
+                    b = Integer.parseInt(temp[i].substring(indexOfExponent+1)); // b is equal to the value after the '^'
                 }
-                if(negativeCoefficient) a = -a;
-                if(negativeExponent) b = -b;
+
+                // STEP 2: SIMPLIFY REDUNDANCIES (ex. - -3x == + 3x)
+                if(i != 0) { // skip the first term to prevent out of index exceptions
+                    boolean negativeSign = (temp[i-1].equals("-")); // if string is in the format - -3x, it negativeSign is true, else false
+                    boolean negativeCoefficient = a < 0; // if a is less than 0, negativeCoefficient is true, else false
+
+                    if(negativeSign && negativeCoefficient || (!negativeSign && !negativeCoefficient)) // cases: - -ax^b, + ax^b
+                        a = Math.abs(a);
+                    else if(negativeSign) // cases: - ax^b, + -ax^b
+                        a = -Math.abs(a);
+                }
                 addTerm(a, b);
             }
         }
     }
 
-    public Polynomial(Polynomial p) {
-        mPolynomial = new ArrayList<>();
-        for(int i=0; i<p.getNumTerms(); i++) {
-            addTerm(p.getTerm(i));
+    public void addTerm(String term) {
+        int indexOfX = term.indexOf('x');
+        int indexOfExponent = term.indexOf('^');
+        int indexOfNegativeSign = term.indexOf('-');
+        int a, b; // form of terms: ax^b, where a is the coefficient & b is the exponent
+
+        if(indexOfX == -1) { // case: a, a^b (no 'x')
+            a = Integer.parseInt(term);
+            if(indexOfExponent == -1) // if term is in the form of a
+                b = 0;
+            else // if term is in the form a^b, b is equal to the value after '^'
+                b = Integer.parseInt(term.substring(indexOfExponent+1));
+        } else if(indexOfExponent == -1) { // cases: x, -x, ax (no '^')
+            if(indexOfNegativeSign == 0 && indexOfX == 1) // if term is in form of -x (different than -1x), a = -1
+                a = -1;
+            else // if term is in form of x, a is equal to 1, else a is equal to the value before x
+                a = (indexOfX == 0) ? 1: Integer.parseInt(term.substring(0, indexOfX));
+            b = 1;
+        } else {// cases: x^b, -x^b, ax^b (both 'x' & '^' are present)
+            if(indexOfNegativeSign == 1 && indexOfX == 2) // if term is in form of -x^b (different than -1x^b), a = -1
+                a = -1;
+            else // if term is in form of x^b, a is equal to 1, else a is equal to the value before x
+                a = (indexOfX == 0) ? 1: Integer.parseInt(term.substring(0, indexOfX));
+            b = Integer.parseInt(term.substring(indexOfExponent+1)); // b is equal to the value after the '^'
         }
+        addTerm(a, b);
     }
 
     public void addTerm(Term t) { addTerm(t.getCoefficient(), t.getExponent()); }
@@ -50,13 +99,14 @@ public class Polynomial {
         sortPolynomial();
     }
 
+
+
     private void checkZeros() {
         for(int i=0; i<mPolynomial.size(); i++)
             if(mPolynomial.get(i).getCoefficient() == 0) {
                 mPolynomial.remove(i);
                 i--;
             }
-
     }
 
     private void checkDuplicates() {
@@ -131,10 +181,29 @@ public class Polynomial {
                 else {
                     stb.append(sign).append(termWithoutSign); // puts a space between the + or - and the term
                 }
-
             }
-
         }
+        return stb.toString();
+    }
+
+    public String toStringImproved() {
+        if(mPolynomial.size() == 0)
+            return "0";
+        StringBuilder stb = new StringBuilder();
+        for(int i=0; i<mPolynomial.size(); i++) {
+            Term term = mPolynomial.get(i);
+            boolean negativeCoefficient = term.getCoefficient() < 0;
+            String termWithoutSign = term.toString().substring(1); // if term is in form: -ax^b, it will put it will remove the negative sign
+            String sign = (negativeCoefficient) ? "-" : "";
+            if(i != 0) {
+                if(negativeCoefficient)
+                    stb.append(" - ").append(termWithoutSign);
+                else
+                    stb.append(" + ").append(termWithoutSign);
+            } else
+                stb.append(sign).append(termWithoutSign);
+        }
+
         return stb.toString();
     }
 }
